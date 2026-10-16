@@ -11,6 +11,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Version-3.0.0-gold.svg" alt="Version 3.0.0" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/Android-API%2024%2B-brightgreen.svg" alt="Android API 24+" />
   <img src="https://img.shields.io/badge/Kotlin-1.9.24-blue.svg" alt="Kotlin 1.9.24" />
   <img src="https://img.shields.io/badge/Compose-BOM%202024.06.00-purple.svg" alt="Jetpack Compose" />
@@ -23,6 +24,20 @@
 ## 🌟 Overview
 
 **Pushup Royale** is an offline-first fitness application that turns daily pushups into a competitive Battle Royale ranking system. Using on-device computer vision powered by **Google ML Kit Pose Detection** and **CameraX**, it tracks your exercise form in real time through the phone's front camera—with zero cloud dependencies and 100% privacy.
+
+---
+
+## 📸 Screenshots
+
+| Live Workout & Positioning | Today's Goal Ring |
+| :---: | :---: |
+| <img src="screenshots/workout_tracking.jpg" alt="Live Workout & Positioning" width="340"/> | <img src="screenshots/reports_today.jpg" alt="Today's Goal Ring" width="340"/> |
+| **Live Workout HUD**<br/>Front-camera positioning feedback, rank progress bar, rep counter, and Liquid Glass navigation. | **Today's Completion**<br/>Daily goal completion donut, calories burned estimate, XP gained, and daily win progress. |
+
+| Monthly Analytics Donut | Pushup Engine Settings |
+| :---: | :---: |
+| <img src="screenshots/reports_month.jpg" alt="Monthly Analytics Donut" width="340"/> | <img src="screenshots/settings_engine.jpg" alt="Pushup Engine Settings" width="340"/> |
+| **Monthly Analytics**<br/>Completed vs Remaining target donut chart, active/rest days balance, and consistency metrics. | **Settings & Engine**<br/>Configurable workout targets, depth/lockout angles, feedback toggles, and Prasad Dhodamani credits. |
 
 ---
 
@@ -90,6 +105,13 @@ PushupRoyale/
 │   ├── v1.0.0/                     # Initial MVP release metadata
 │   ├── v2.0.0/                     # Liquid Glass UI & Reports release
 │   └── v3.0.0/                     # Full-Body AI Tracking & Anti-Cheat release
+├── screenshots/                    # App UI screenshots
+│   ├── workout_tracking.jpg        # Live workout screen
+│   ├── reports_today.jpg           # Today completion donut chart
+│   ├── reports_month.jpg           # Monthly volume donut chart
+│   └── settings_engine.jpg         # Settings & Prasad Dhodamani credits
+├── LICENSE                         # Official MIT License
+├── README.md                       # Project documentation & visual gallery
 ├── logo.png                        # Official app brand asset
 ├── build.gradle.kts                # Root build script
 ├── gradle.properties               # Native AAPT2 override configuration
@@ -119,4 +141,6 @@ Pushup Royale follows [Semantic Versioning (SemVer 2.0.0)](https://semver.org/):
 
 ## 📄 License
 
-Pushup Royale is open-source software built for local personal fitness tracking.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2026 Prasad Dhodamani.
