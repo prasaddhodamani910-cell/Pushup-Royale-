@@ -102,10 +102,6 @@ PushupRoyale/
 │   │       ├── PushupGeometryTest.kt  # JUnit 4 geometry & strict plank verification tests
 │   │       └── RanksLogicTest.kt      # JUnit 4 battle royale XP ladder & progress tests
 │   └── build.gradle.kts            # App dependencies & compiler configuration
-├── Doc/
-│   ├── PushupRoyale_MASTER_PROMPT.md            # Complete architectural spec & source reference
-│   ├── PushupRoyale_MASTER_FIX_PROMPT.md        # Full-body AI tracking & Anti-cheat specification
-│   └── Pushup_Royale_Master_Improvement_Prompt.md # Lifecycle, strict pose & testing spec
 ├── release/
 │   ├── CHANGELOG.md                # SemVer versioning guide & release history
 │   ├── v1.0.0/                     # Initial MVP release metadata
