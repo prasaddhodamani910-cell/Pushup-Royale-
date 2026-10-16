@@ -1,0 +1,9 @@
+{
+  "versionCode": 4,
+  "versionName": "3.0.1",
+  "updateType": "PATCH_ENGINE_HARDENING",
+  "buildDate": "2026-10-16",
+  "author": "Prasad Dhodamani",
+  "apkName": "PushupRoyale-v3.0.1.apk",
+  "sha256": "55fcbef76830fd6a409f5f4ab61a9b816d3ec3b28eeb9f7eea3f853d8ce0d08d"
+}

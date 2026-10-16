@@ -107,11 +107,22 @@ class PushupAnalyzer(
     private val onUpdate: (PushupFeedback) -> Unit
 ) : ImageAnalysis.Analyzer {
 
-    private val detector = PoseDetection.getClient(
-        PoseDetectorOptions.Builder()
-            .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
-            .build()
-    )
+    @Volatile private var isClosed = false
+    private var detector: com.google.mlkit.vision.pose.PoseDetector? = null
+
+    @Synchronized
+    private fun getDetector(): com.google.mlkit.vision.pose.PoseDetector {
+        val current = detector
+        if (current != null && !isClosed) return current
+        val newDetector = PoseDetection.getClient(
+            PoseDetectorOptions.Builder()
+                .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
+                .build()
+        )
+        detector = newDetector
+        isClosed = false
+        return newDetector
+    }
 
     private val main = Handler(Looper.getMainLooper())
     private val isProcessing = AtomicBoolean(false)
@@ -143,7 +154,11 @@ class PushupAnalyzer(
     }
 
     fun close() {
-        try { detector.close() } catch (_: Exception) { /* best effort */ }
+        synchronized(this) {
+            isClosed = true
+            try { detector?.close() } catch (_: Exception) { /* best effort */ }
+            detector = null
+        }
     }
 
     @androidx.annotation.OptIn(ExperimentalGetImage::class)
@@ -160,6 +175,15 @@ class PushupAnalyzer(
             return
         }
 
+        val activeDetector = synchronized(this) {
+            if (isClosed) null else getDetector()
+        }
+        if (activeDetector == null) {
+            proxy.close()
+            isProcessing.set(false)
+            return
+        }
+
         val rot = proxy.imageInfo.rotationDegrees
         val rotated = rot == 90 || rot == 270
         val w = if (rotated) img.height else img.width
@@ -173,7 +197,7 @@ class PushupAnalyzer(
             return
         }
 
-        detector.process(inputImage)
+        activeDetector.process(inputImage)
             .addOnSuccessListener { pose ->
                 try {
                     processPose(pose, w, h)
@@ -307,10 +331,11 @@ class PushupAnalyzer(
             computeAngle(shoulderMid, hipMid, lowerLegPoint)
         } else null
 
-        // Body straightness evaluation (penalize sagging < 135 deg)
-        val isPlankStraight = plankAngle == null || plankAngle >= PLANK_MIN_STRAIGHT_ANGLE
-        val isSagging = plankAngle != null && plankAngle < PLANK_MIN_STRAIGHT_ANGLE && hipMid != null && shoulderMid != null && hipMid.y > shoulderMid.y + 20f
-        val isPiking = plankAngle != null && plankAngle < PLANK_MIN_STRAIGHT_ANGLE && hipMid != null && shoulderMid != null && hipMid.y < shoulderMid.y - 20f
+        // Body straightness evaluation (NEVER treat missing measurements as proof of good form!)
+        val hasVerifiedAlignment = plankAngle != null
+        val isPlankStraight = hasVerifiedAlignment && plankAngle!! >= PLANK_MIN_STRAIGHT_ANGLE
+        val isSagging = hasVerifiedAlignment && plankAngle!! < PLANK_MIN_STRAIGHT_ANGLE && hipMid != null && shoulderMid != null && hipMid.y > shoulderMid.y + 15f
+        val isPiking = hasVerifiedAlignment && plankAngle!! < PLANK_MIN_STRAIGHT_ANGLE && hipMid != null && shoulderMid != null && hipMid.y < shoulderMid.y - 15f
 
         // 4. Compute Torso Vertical Displacement (Anti-Cheat)
         // In image coordinates, y increases downward.
@@ -342,6 +367,11 @@ class PushupAnalyzer(
                         activeGuidance = TrackingGuidance.LOOKING_FOR_USER
                         readyStableFrames = 0
                     }
+                    !hasVerifiedAlignment -> {
+                        // Strict validation: hips and legs must be visible before entering ready!
+                        activeGuidance = TrackingGuidance.STEP_BACK
+                        readyStableFrames = 0
+                    }
                     isSagging -> {
                         activeGuidance = TrackingGuidance.SAG_HIPS
                         readyStableFrames = 0
@@ -355,7 +385,7 @@ class PushupAnalyzer(
                         readyStableFrames = 0
                     }
                     else -> {
-                        // User in top plank position with straight arms and straight body
+                        // User in top plank position with straight arms and verified straight body
                         readyStableFrames++
                         if (readyStableFrames >= REQUIRED_STABLE_FRAMES) {
                             state = PushupState.TOP
@@ -375,7 +405,9 @@ class PushupAnalyzer(
                     topShoulderWristSpan = currentSpan
                 }
 
-                if (isSagging) {
+                if (!hasVerifiedAlignment) {
+                    activeGuidance = TrackingGuidance.STEP_BACK
+                } else if (isSagging) {
                     activeGuidance = TrackingGuidance.SAG_HIPS
                 } else if (currentArmAngle != null && currentArmAngle < 135.0) {
                     state = PushupState.DESCENDING
@@ -387,7 +419,9 @@ class PushupAnalyzer(
             PushupState.DESCENDING -> {
                 activeGuidance = TrackingGuidance.DESCENDING
 
-                if (isSagging) {
+                if (!hasVerifiedAlignment) {
+                    activeGuidance = TrackingGuidance.STEP_BACK
+                } else if (isSagging) {
                     activeGuidance = TrackingGuidance.SAG_HIPS
                 }
 
@@ -429,6 +463,9 @@ class PushupAnalyzer(
                         state = PushupState.TOP
                         maxTorsoDisplacementInRep = 0f
                         activeGuidance = TrackingGuidance.READY
+                    } else if (!hasVerifiedAlignment) {
+                        activeGuidance = TrackingGuidance.STEP_BACK
+                        state = PushupState.TOP
                     } else if (!isPlankStraight) {
                         activeGuidance = TrackingGuidance.SAG_HIPS
                         state = PushupState.TOP
@@ -498,13 +535,6 @@ class PushupAnalyzer(
         }
     }
 
-    private fun computeAngle(p1: Point2D, p2: Point2D, p3: Point2D): Double {
-        val r = atan2((p3.y - p2.y).toDouble(), (p3.x - p2.x).toDouble()) -
-                atan2((p1.y - p2.y).toDouble(), (p1.x - p2.x).toDouble())
-        val deg = abs(Math.toDegrees(r))
-        return if (deg > 180.0) 360.0 - deg else deg
-    }
-
     companion object {
         const val DOWN = 90.0
         const val UP   = 150.0
@@ -515,5 +545,25 @@ class PushupAnalyzer(
         const val MIN_TORSO_DISPLACEMENT_RATIO = 0.12f
         private const val EMA_ALPHA = 0.45
         private const val REQUIRED_STABLE_FRAMES = 3
+
+        /**
+         * Calculates angle between three points with vertex at p2, in degrees (0..180).
+         */
+        fun computeAngle(p1: Point2D, p2: Point2D, p3: Point2D): Double {
+            val r = atan2((p3.y - p2.y).toDouble(), (p3.x - p2.x).toDouble()) -
+                    atan2((p1.y - p2.y).toDouble(), (p1.x - p2.x).toDouble())
+            val deg = abs(Math.toDegrees(r))
+            return if (deg > 180.0) 360.0 - deg else deg
+        }
+
+        /**
+         * Verifies if the plank line formed by shoulder-hip-leg is straight (>= 135 degrees).
+         * Returns false if any required landmark is missing.
+         */
+        fun isPlankValid(shoulder: Point2D?, hip: Point2D?, leg: Point2D?): Boolean {
+            if (shoulder == null || hip == null || leg == null) return false
+            val angle = computeAngle(shoulder, hip, leg)
+            return angle >= PLANK_MIN_STRAIGHT_ANGLE
+        }
     }
 }

@@ -22,6 +22,14 @@ Pushup Royale adheres to [Semantic Versioning 2.0.0](https://semver.org/):
 
 ## Release History
 
+### [v3.0.1] — 2026-10-16 *(ENGINE HARDENING & BUG FIX)*
+- **Detector Lifecycle Safety**: Thread-safe lazy `getDetector()` auto-recreation preventing permanent ML Kit disposal on tab switching.
+- **Strict Plank & Landmark Validation**: Null or occluded lower-body landmarks strictly evaluate to `isPlankStraight = false` with `STEP_BACK` guidance.
+- **ResolutionSelector Migration**: Replaced deprecated `setTargetResolution` with CameraX `ResolutionSelector` and `FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER`.
+- **Threshold Constraints**: Enforced `downAngle <= upAngle - 20f` across settings UI and storage to prevent contradictory state jitter.
+- **Session Banking Accuracy**: Multi-session accumulation for daily goal; prevented duplicate "Winner Dinner" win awarding on the same day.
+- **JUnit 4 Test Suite**: Automated geometry, plank integrity, and XP rank progression unit test coverage.
+
 ### [v3.0.0] — 2026-10-16 *(MAJOR UPDATE)*
 - **Core Engine Rewrite**: Upgraded ML Kit tracking from arm-only elbow checking to full-body kinematic analysis (Shoulders, Elbows, Wrists, Hips, Knees, Ankles, Head/Nose).
 - **Anti-Cheat Verification**: Added mandatory torso vertical displacement calculation; moving hands or bending elbows alone will not trigger pushup reps.

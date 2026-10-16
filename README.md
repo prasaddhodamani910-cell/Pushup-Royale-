@@ -10,12 +10,13 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-3.0.0-gold.svg" alt="Version 3.0.0" />
+  <img src="https://img.shields.io/badge/Version-3.0.1-gold.svg" alt="Version 3.0.1" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
   <img src="https://img.shields.io/badge/Android-API%2024%2B-brightgreen.svg" alt="Android API 24+" />
   <img src="https://img.shields.io/badge/Kotlin-1.9.24-blue.svg" alt="Kotlin 1.9.24" />
   <img src="https://img.shields.io/badge/Compose-BOM%202024.06.00-purple.svg" alt="Jetpack Compose" />
   <img src="https://img.shields.io/badge/AI-Google%20ML%20Kit%20Pose-orange.svg" alt="ML Kit Pose" />
+  <img src="https://img.shields.io/badge/Tests-JUnit%204%20Passing-brightgreen.svg" alt="JUnit 4 Passing" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline-green.svg" alt="100% Offline" />
 </p>
 
@@ -96,27 +97,47 @@ PushupRoyale/
 │   │   │   └── Ranks.kt            # Battle Royale XP ladder, Analytics engine & Local storage
 │   │   ├── res/                    # Adaptive launcher icons, drawables, theme tokens
 │   │   └── AndroidManifest.xml     # Offline camera permissions & lifecycle hooks
+│   ├── src/test/
+│   │   └── java/com/example/pushuproyale/
+│   │       ├── PushupGeometryTest.kt  # JUnit 4 geometry & strict plank verification tests
+│   │       └── RanksLogicTest.kt      # JUnit 4 battle royale XP ladder & progress tests
 │   └── build.gradle.kts            # App dependencies & compiler configuration
 ├── Doc/
-│   ├── PushupRoyale_MASTER_PROMPT.md      # Complete architectural spec & source reference
-│   └── PushupRoyale_MASTER_FIX_PROMPT.md  # Full-body AI tracking & Anti-cheat specification
+│   ├── PushupRoyale_MASTER_PROMPT.md            # Complete architectural spec & source reference
+│   ├── PushupRoyale_MASTER_FIX_PROMPT.md        # Full-body AI tracking & Anti-cheat specification
+│   └── Pushup_Royale_Master_Improvement_Prompt.md # Lifecycle, strict pose & testing spec
 ├── release/
 │   ├── CHANGELOG.md                # SemVer versioning guide & release history
 │   ├── v1.0.0/                     # Initial MVP release metadata
 │   ├── v2.0.0/                     # Liquid Glass UI & Reports release
-│   └── v3.0.0/                     # Full-Body AI Tracking & Anti-Cheat release
+│   ├── v3.0.0/                     # Full-Body AI Tracking & Anti-Cheat release
+│   └── v3.0.1/                     # Engine Hardening, Lifecycle Safety & Test Suite
 ├── screenshots/                    # App UI screenshots
 │   ├── workout_tracking.jpg        # Live workout screen
 │   ├── reports_today.jpg           # Today completion donut chart
 │   ├── reports_month.jpg           # Monthly volume donut chart
 │   └── settings_engine.jpg         # Settings & Prasad Dhodamani credits
-├── LICENSE                         # Official MIT License
+├── LICENSE                         # Official MIT License (Prasad Dhodamani)
 ├── README.md                       # Project documentation & visual gallery
 ├── logo.png                        # Official app brand asset
 ├── build.gradle.kts                # Root build script
 ├── gradle.properties               # Native AAPT2 override configuration
 └── settings.gradle.kts             # Gradle project settings
 ```
+
+---
+
+## 🧪 Automated Unit Testing
+
+Pushup Royale includes a local JUnit 4 unit testing suite covering mathematical kinematics, plank alignment integrity, and rank progression calculations without needing an Android emulator:
+
+```bash
+# Execute local unit tests (100% offline)
+GRADLE_OPTS="-Xmx1536m -Dorg.gradle.daemon=false" gradle --no-daemon test
+```
+
+- **`PushupGeometryTest`**: Validates 3-point joint angle calculations across 90°, 180°, and acute angles, strict normalization between 0° and 180°, and enforces that null or occluded lower-body landmarks never pass the plank check.
+- **`RanksLogicTest`**: Validates the 8-tier Battle Royale ladder (Bronze $\to$ Conqueror), XP calculations, tier-boundary progress fractions, and default preferences.
 
 ---
 

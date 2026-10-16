@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.pushuproyale"
         minSdk = 24
         targetSdk = 34
-        versionCode = 3
-        versionName = "3.0.0"
+        versionCode = 4
+        versionName = "3.0.1"
     }
 
     compileOptions {
@@ -53,4 +53,7 @@ dependencies {
 
     // ML Kit Pose Detection (bundled, offline)
     implementation("com.google.mlkit:pose-detection:18.0.0-beta4")
+
+    // Local Unit Tests
+    testImplementation("junit:junit:4.13.2")
 }

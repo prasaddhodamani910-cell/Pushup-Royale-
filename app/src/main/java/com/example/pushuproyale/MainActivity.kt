@@ -18,6 +18,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
@@ -275,6 +277,12 @@ private fun PushupRoyaleApp() {
         analyzer.upThreshold = upAngle.toDouble()
     }
 
+    DisposableEffect(Unit) {
+        onDispose {
+            try { analyzer.close() } catch (_: Exception) {}
+        }
+    }
+
     val rankInfo = Ranks.info(xp)
     val isFront  = lensFacing == CameraSelector.LENS_FACING_FRONT
 
@@ -327,23 +335,24 @@ private fun PushupRoyaleApp() {
                     reps        = reps,
                     angle       = angle,
                     isDown      = isDown,
-                    poseState   = poseState,
                     guidance    = guidance,
                     plankAngle  = plankAngle,
-                    armsVisible = arms.isNotEmpty(),
                     wonBanner   = wonBanner,
                     dailyGoal   = dailyGoal,
                     todayTotal  = todayReps + reps,
                     repPop      = repPop,
                     onFinish    = {
-                        Ranks.addSession(ctx, reps)
-                        xp        = Ranks.xp(ctx)
-                        wins      = Ranks.wins(ctx)
-                        streak    = Ranks.streak(ctx)
-                        todayReps = Ranks.todayReps(ctx)
-                        wonBanner = reps >= dailyGoal
-                        analyzer.reset()
-                        reps = 0
+                        val currentReps = reps
+                        if (currentReps > 0) {
+                            Ranks.addSession(ctx, currentReps)
+                            xp        = Ranks.xp(ctx)
+                            wins      = Ranks.wins(ctx)
+                            streak    = Ranks.streak(ctx)
+                            todayReps = Ranks.todayReps(ctx)
+                            wonBanner = currentReps >= dailyGoal
+                            analyzer.reset()
+                            reps = 0
+                        }
                     },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -367,7 +376,6 @@ private fun PushupRoyaleApp() {
 
             AppScreen.SETTINGS -> {
                 SettingsScreen(
-                    ctx              = ctx,
                     dailyGoal        = dailyGoal,
                     onGoalChange     = {
                         dailyGoal = it
@@ -375,13 +383,15 @@ private fun PushupRoyaleApp() {
                     },
                     downAngle        = downAngle,
                     onDownAngleChange= {
-                        downAngle = it
-                        Ranks.setDownAngle(ctx, it)
+                        val clamped = it.coerceIn(60f, (upAngle - 20f).coerceAtMost(115f))
+                        downAngle = clamped
+                        Ranks.setDownAngle(ctx, clamped)
                     },
                     upAngle          = upAngle,
                     onUpAngleChange  = {
-                        upAngle = it
-                        Ranks.setUpAngle(ctx, it)
+                        val clamped = it.coerceIn((downAngle + 20f).coerceAtLeast(130f), 175f)
+                        upAngle = clamped
+                        Ranks.setUpAngle(ctx, clamped)
                     },
                     soundOn          = soundOn,
                     onSoundChange    = {
@@ -1008,7 +1018,6 @@ private fun MetricCard(title: String, value: String, accent: Color, modifier: Mo
 
 @Composable
 private fun SettingsScreen(
-    ctx: Context,
     dailyGoal: Int,
     onGoalChange: (Int) -> Unit,
     downAngle: Float,
@@ -1111,7 +1120,7 @@ private fun SettingsScreen(
                             Spacer(Modifier.width(10.dp))
                             Text("${downAngle.toInt()}°", color = Mint, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.width(10.dp))
-                            RoundStepButton("+") { onDownAngleChange((downAngle + 5f).coerceAtMost(115f)) }
+                            RoundStepButton("+") { onDownAngleChange((downAngle + 5f).coerceAtMost(upAngle - 20f).coerceAtMost(115f)) }
                         }
                     }
 
@@ -1126,7 +1135,7 @@ private fun SettingsScreen(
                             Text("Elbow must extend above this (Default: 150°)", color = TextTertiary, fontSize = 11.sp)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            RoundStepButton("-") { onUpAngleChange((upAngle - 5f).coerceAtLeast(130f)) }
+                            RoundStepButton("-") { onUpAngleChange((upAngle - 5f).coerceAtLeast(downAngle + 20f).coerceAtLeast(130f)) }
                             Spacer(Modifier.width(10.dp))
                             Text("${upAngle.toInt()}°", color = GoldLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.width(10.dp))
@@ -1463,10 +1472,8 @@ private fun BottomGlassHud(
     reps: Int,
     angle: Int?,
     isDown: Boolean,
-    poseState: PushupState,
     guidance: TrackingGuidance,
     plankAngle: Double?,
-    armsVisible: Boolean,
     wonBanner: Boolean,
     dailyGoal: Int,
     todayTotal: Int,
@@ -1877,8 +1884,8 @@ private fun CameraView(
 
     DisposableEffect(Unit) {
         onDispose {
+            try { provider?.unbindAll() } catch (_: Exception) {}
             try { executor.shutdown() } catch (_: Exception) {}
-            try { analyzer.close() } catch (_: Exception) {}
         }
     }
 
@@ -1901,12 +1908,25 @@ private fun CameraView(
                     try {
                         val prov = future.get()
                         provider = prov
-                        val preview = Preview.Builder().build().also {
-                            it.setSurfaceProvider(view.surfaceProvider)
-                        }
+
+                        val resolutionSelector = ResolutionSelector.Builder()
+                            .setResolutionStrategy(
+                                ResolutionStrategy(
+                                    android.util.Size(480, 640),
+                                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                                )
+                            )
+                            .build()
+
+                        val preview = Preview.Builder()
+                            .setResolutionSelector(resolutionSelector)
+                            .build()
+                            .also {
+                                it.setSurfaceProvider(view.surfaceProvider)
+                            }
                         val analysis = ImageAnalysis.Builder()
                             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                            .setTargetResolution(android.util.Size(480, 640))
+                            .setResolutionSelector(resolutionSelector)
                             .build()
                             .also { it.setAnalyzer(executor, analyzer) }
 

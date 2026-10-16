@@ -107,6 +107,11 @@ object Ranks {
         val last  = p.getString("last_date", null)
         val curStreak   = p.getInt("streak", 0)
         val curToday    = if (last == today) p.getInt("today_reps", 0) else 0
+        val goal        = dailyGoal(c)
+        val alreadyWonToday = (last == today) && (curToday >= goal)
+        val newToday    = curToday + reps
+        val wonNow      = !alreadyWonToday && (newToday >= goal)
+        val newWins     = wins(c) + if (wonNow) 1 else 0
 
         val newStreak = when (last) {
             today -> maxOf(curStreak, 1)       // same day — keep
@@ -115,7 +120,6 @@ object Ranks {
         }
         val best = maxOf(p.getInt("best_streak", 0), newStreak)
         val curSessions = p.getInt("total_sessions", 0) + 1
-        val goal = dailyGoal(c)
 
         // Update history JSON
         val histJson = try {
@@ -128,12 +132,12 @@ object Ranks {
 
         p.edit()
             .putInt("xp",             xp(c) + reps * 10)
-            .putInt("wins",           wins(c) + if (reps >= goal) 1 else 0)
+            .putInt("wins",           newWins)
             .putInt("streak",         newStreak)
             .putInt("best_streak",    best)
             .putInt("total_sessions", curSessions)
             .putString("last_date",   today)
-            .putInt("today_reps",     curToday + reps)
+            .putInt("today_reps",     newToday)
             .putString("history_json", histJson.toString())
             .apply()
     }
